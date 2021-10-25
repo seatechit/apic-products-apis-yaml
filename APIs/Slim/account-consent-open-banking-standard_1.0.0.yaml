@@ -1,0 +1,264 @@
+swagger: '2.0'
+info:
+  title: Account Consent (Open Banking Standard)
+  x-ibm-name: account-consent-open-banking-standard
+  version: 1.0.0
+schemes:
+  - https
+basePath: /OB-v312/IDBP-v1
+produces:
+  - application/json
+consumes:
+  - application/json
+security:
+  - AppID: []
+    AppSecret: []
+securityDefinitions:
+  AppSecret:
+    type: apiKey
+    name: X-Client-Secret
+    in: header
+    x-key-type: client_secret
+  AppID:
+    type: apiKey
+    name: X-Client-Id
+    in: header
+    x-key-type: client_id
+x-ibm-configuration:
+  enforced: true
+  testable: true
+  phase: realized
+  gateway: datapower-api-gateway
+  type: rest
+  cors:
+    enabled: true
+  assembly:
+    execute:
+      - switch:
+          version: 2.0.0
+          title: switch
+          case:
+            - condition: >-
+                ($httpVerb() = 'POST' and $operationPath() =
+                '/account-access-consents')
+              execute:
+                - gatewayscript:
+                    version: 2.0.0
+                    title: gatewayscript
+                    source: >-
+                      context.message.header.set('clientorgname',context.get('client.org.name')); 
+
+                      context.message.header.set('clientappname',context.get('client.app.name'));
+
+                      context.message.header.set('clientappid',context.get('client.app.id'));
+                - invoke:
+                    version: 2.0.0
+                    title: invoke
+                    header-control:
+                      type: blacklist
+                      values: []
+                    parameter-control:
+                      type: whitelist
+                      values: []
+                    timeout: 60
+                    verb: keep
+                    cache-response: protocol
+                    cache-ttl: 900
+                    stop-on-error:
+                      - ConnectionError
+                    target-url: $(idbp-consent-mgmt)/secapp/int/account/consentid/generate
+            - condition: >-
+                ($httpVerb() = 'GET' and $operationPath() =
+                '/account-access-consents/{ConsentId}')
+              execute:
+                - gatewayscript:
+                    version: 2.0.0
+                    title: gatewayscript
+                    source: >-
+                      console.error("ConsentID from Path:
+                      ",context.get('request.parameters.ConsentId'))
+                - invoke:
+                    version: 2.0.0
+                    title: invoke
+                    header-control:
+                      type: blacklist
+                      values: []
+                    parameter-control:
+                      type: whitelist
+                      values: []
+                    timeout: 60
+                    verb: keep
+                    cache-response: protocol
+                    cache-ttl: 900
+                    stop-on-error:
+                      - ConnectionError
+                    target-url: >-
+                      $(idbp-consent-mgmt)/secapp/int/consentid/status?consentid=$(request.parameters.ConsentId)
+  properties:
+    target-url:
+      value: 'http://example.com/operation-name'
+      description: The URL of the target service
+      encoded: false
+    idbp-consent-mgmt:
+      value: 'http://idbp-consent-mgmt-APPNAMESPACE-APPDOMAIN'
+      encoded: false
+  application-authentication:
+    certificate: true
+  activity-log:
+    enabled: true
+    error-content: header
+    success-content: activity
+  categories:
+    - Account/OpenBanking
+parameters: {}
+tags: []
+definitions:
+  AccountConsentAccessRequest:
+    description: ''
+    type: object
+    properties:
+      Data:
+        type: object
+        properties:
+          ExpirationDateTime:
+            type: string
+          TransactionFromDateTime:
+            type: string
+          TransactionToDateTime:
+            type: string
+          Permissions:
+            type: array
+            items:
+              type: string
+            minItems: 1
+            maxItems: 15
+            uniqueItems: true
+    example: >-
+      {"Data": {"Permissions": ["ReadAccountsDetail", "ReadBalances",
+      "ReadBeneficiariesDetail", "ReadDirectDebits", "ReadProducts",
+      "ReadStandingOrdersDetail", "ReadTransactionsCredits",
+      "ReadTransactionsDebits", "ReadTransactionsDetail", "ReadOffers",
+      "ReadPAN", "ReadParty", "ReadPartyPSU", "ReadScheduledPaymentsDetail",
+      "ReadStatementsDetail"], "ExpirationDateTime":
+      "2017-05-02T00:00:00+00:00", "TransactionFromDateTime":
+      "2017-05-03T00:00:00+00:00", "TransactionToDateTime":
+      "2017-12-03T00:00:00+00:00"}, "Risk": {} }  
+  AccountConsentAccessResponse:
+    description: ''
+    type: object
+    properties:
+      Data:
+        type: object
+        properties:
+          ConsentId:
+            type: string
+          Status:
+            type: string
+          StatusUpdateDateTime:
+            type: string
+          CreationDateTime:
+            type: string
+          ExpirationDateTime:
+            type: string
+          TransactionFromDateTime:
+            type: string
+          TransactionToDateTime:
+            type: string
+          Permissions:
+            type: array
+            items:
+              type: string
+            minItems: 1
+            maxItems: 15
+            uniqueItems: true
+      Risk:
+        type: object
+      Links:
+        type: object
+        properties:
+          Self:
+            type: string
+      Meta:
+        type: object
+    example: >-
+      {"Data": {"ConsentId": "urn-alphabank-intent-88379", "Status":
+      "AwaitingAuthorisation", "StatusUpdateDateTime":
+      "2017-05-02T00:00:00+00:00", "CreationDateTime":
+      "2017-05-02T00:00:00+00:00", "Permissions": ["ReadAccountsDetail",
+      "ReadBalances", "ReadBeneficiariesDetail", "ReadDirectDebits",
+      "ReadProducts", "ReadStandingOrdersDetail", "ReadTransactionsCredits",
+      "ReadTransactionsDebits", "ReadTransactionsDetail", "ReadOffers",
+      "ReadPAN", "ReadParty", "ReadPartyPSU", "ReadScheduledPaymentsDetail",
+      "ReadStatementsDetail"], "ExpirationDateTime":
+      "2017-08-02T00:00:00+00:00", "TransactionFromDateTime":
+      "2017-05-03T00:00:00+00:00", "TransactionToDateTime":
+      "2017-12-03T00:00:00+00:00"}, "Risk": {}, "Links": {"Self":
+      "https://api.alphabank.com/open-banking/v3.1/aisp/account-access-consents/urn-alphabank-intent-88379"},
+      "Meta": {"TotalPages": 1 } }
+paths:
+  '/account-access-consents/{consentid}':
+    get:
+      responses:
+        '200':
+          description: success
+          schema:
+            $ref: '#/definitions/AccountConsentAccessResponse'
+      parameters:
+        - name: x-fapi-auth-date
+          in: header
+          required: true
+          type: string
+        - name: x-fapi-customer-ip-address
+          in: header
+          required: true
+          type: string
+        - name: x-fapi-interaction-id
+          in: header
+          required: true
+          type: string
+      security:
+        - AppID: []
+          AppSecret: []
+      consumes: []
+      produces: []
+    parameters:
+      - name: consentid
+        in: path
+        required: true
+        type: string
+  /account-access-consents:
+    post:
+      tags:
+        - Account
+      summary: createAccountAccessConsents
+      operationId: createAccountAccessConsents
+      responses:
+        '200':
+          description: success
+          schema:
+            $ref: '#/definitions/AccountConsentAccessResponse'
+      security:
+        - AppID: []
+          AppSecret: []
+          TPPOAuthSecurity:
+            - tpp_client_credentials
+      parameters:
+        - name: x-fapi-auth-date
+          in: header
+          required: true
+          type: string
+        - name: x-fapi-customer-ip-address
+          in: header
+          required: true
+          type: string
+        - name: x-fapi-interaction-id
+          in: header
+          required: true
+          type: string
+        - name: Request Payload
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/AccountConsentAccessRequest'
+      consumes: []
+      produces: []

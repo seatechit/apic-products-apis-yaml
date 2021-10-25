@@ -1,0 +1,29 @@
+info:
+  name: inventory
+  title: Inventory (Test)
+  version: 1.0.0
+apis:
+  inventory1.0.0:
+    name: 'inventory:1.0.0'
+gateways:
+  - datapower-api-gateway
+plans:
+  default-plan:
+    title: Default Plan
+    description: Default Plan
+    approval: false
+    rate-limits:
+      default:
+        value: 100/1hour
+product: 1.0.0
+visibility:
+  view:
+    enabled: true
+    type: public
+    tags: []
+    orgs: []
+  subscribe:
+    enabled: true
+    type: authenticated
+    tags: []
+    orgs: []

@@ -1,0 +1,29 @@
+info:
+  version: 1.0.0
+  title: Corporate Multi Payment Online (Open Banking Standard)
+  name: corp-multi-payment-online-open-banking-standard
+  categories:
+    - Payment/OpenBanking/Corporate
+gateways:
+  - datapower-api-gateway
+plans:
+  basic-plan:
+    rate-limits:
+      default:
+        value: 100/1hour
+    title: Basic Plan
+    description: Basic Plan
+    approval: false
+apis:
+  corporate-multi-payment-online1.0.0:
+    name: corporate-multi-payment-online:1.0.0
+visibility:
+  view:
+    type: public
+    orgs: []
+    enabled: true
+  subscribe:
+    type: authenticated
+    orgs: []
+    enabled: true
+product: 1.0.0

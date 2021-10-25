@@ -1,0 +1,918 @@
+swagger: '2.0'
+info:
+  title: Retail Single Payment (Open Banking Standard)
+  x-ibm-name: retail-single-payment-open-banking
+  version: 1.0.0
+  description: Retail Payment
+host: $(catalog.host)
+schemes:
+  - https
+basePath: /OB-v312/IDBP-v1
+produces:
+  - application/json
+consumes:
+  - application/json
+security:
+  - AppID: []
+    AppSecret: []
+securityDefinitions:
+  AppID:
+    type: apiKey
+    name: x-client-id
+    in: header
+    x-key-type: client_id
+  AppSecret:
+    type: apiKey
+    name: x-client-secret
+    in: header
+    x-key-type: client_secret
+  TPPOAuthSecurity:
+    type: oauth2
+    flow: application
+    x-ibm-oauth-provider: idbp-intent-oauth-provider
+    tokenUrl: 'https://$(catalog.url)/idbp/intent/oauth/provider/oauth2/token'
+    scopes:
+      tpp_client_credentials: for intent token
+  UserOAuthSecurity:
+    type: oauth2
+    flow: accessCode
+    x-ibm-oauth-provider: idbp-payment-oauth-provider
+    authorizationUrl: 'https://$(catalog.url)/idbp/payment/oauth/provider/oauth2/authorize'
+    tokenUrl: 'https://$(catalog.url)/idbp/payment/oauth/provider/oauth2/token'
+    scopes:
+      payment: For Payment API
+x-ibm-configuration:
+  enforced: true
+  testable: true
+  phase: realized
+  gateway: datapower-api-gateway
+  type: rest
+  cors:
+    enabled: true
+  assembly:
+    execute:
+      - udp-init-n-hdr-ctype-validate:
+          version: 1.0.0
+          title: udp-init-n-hdr-ctype-validate
+      - switch:
+          version: 2.0.0
+          title: switch
+          case:
+            - condition: ($operationPath() = '/domestic-payment-consents')
+              execute:
+                - udp-jwt-with-signature-verify:
+                    version: 1.0.0
+                    title: udp-jwt-with-signature-verify
+                - gatewayscript:
+                    version: 2.0.0
+                    title: gatewayscript
+                    source: >-
+                      context.message.header.set('clientorgname',context.get('client.org.name')); 
+
+                      context.message.header.set('clientappname',context.get('client.app.name'));
+
+                      context.message.header.set('clientappid',context.get('client.app.id')); 
+                - invoke:
+                    version: 2.0.0
+                    title: invoke
+                    timeout: 60
+                    verb: keep
+                    cache-response: protocol
+                    cache-ttl: 900
+                    stop-on-error:
+                      - ConnectionError
+                    target-url: $(idbp-consent-mgmt)/secapp/int/payment/consentid/generate
+                    header-control:
+                      type: blacklist
+                      values: []
+                    parameter-control:
+                      type: blacklist
+                      values: []
+                    inject-proxy-headers: true
+            - condition: '($operationPath() = ''/domestic-payment-consents/{ConsentId}'')'
+              execute:
+                - gatewayscript:
+                    version: 2.0.0
+                    title: gatewayscript
+                    source: >-
+
+                      console.error("DEBUG ConsentID from Path:
+                      ",context.get('request.parameters.ConsentId'))
+                - invoke:
+                    version: 2.0.0
+                    title: invoke
+                    timeout: 60
+                    verb: keep
+                    cache-response: protocol
+                    cache-ttl: 900
+                    stop-on-error:
+                      - ConnectionError
+                    target-url: >-
+                      $(idbp-consent-mgmt)/secapp/int/consentid/status?consentid=$(request.parameters.ConsentId)
+                    header-control:
+                      type: blacklist
+                      values: []
+                    parameter-control:
+                      type: blacklist
+                      values: []
+                    inject-proxy-headers: true
+            - condition: >-
+                (($operationPath() =
+                '/domestic-payment-consents/{ConsentId}/funds-confirmation'))
+              execute:
+                - invoke:
+                    version: 2.0.0
+                    title: invoke
+                    timeout: 60
+                    verb: keep
+                    cache-response: protocol
+                    cache-ttl: 900
+                    stop-on-error:
+                      - ConnectionError
+                    target-url: >-
+                      $(ace-funds-confirmation)/domestic-payment-consents/funds-confirmation
+                    header-control:
+                      type: blacklist
+                      values: []
+                    parameter-control:
+                      type: blacklist
+                      values: []
+            - condition: ($operationPath() = '/domestic-payments')
+              execute:
+                - udp-jwt-with-signature-verify:
+                    version: 1.0.0
+                    title: udp-jwt-with-signature-verify
+                - gatewayscript:
+                    version: 2.0.0
+                    title: gatewayscript
+                    source: "var myAppConsoleLog = console.options({\n 'category': 'app_LC'\n});\nconst fileName = \"insertDebtorDetailsGwys\"\nmyAppConsoleLog.debug('in ' + fileName);\n\nfunction verifyInputvsTokenMetadata(tokenMetadataObj,req_consentid, req_amt, req_currency, req_tppOrgName) { \n    // tokenMetadata consentid, amt, currency,  tpp_org_name, username, scope, debitorAcc \n    myAppConsoleLog.error('DEBUG in insertDebtorDetailsGwys : tokenMetadataObj: ',tokenMetadataObj);\n    myAppConsoleLog.error('DEBUG in insertDebtorDetailsGwys : tokenMetadataObj[consentid: ',tokenMetadataObj['consentid']);\n    myAppConsoleLog.error('DEBUG in insertDebtorDetailsGwys : tokenMetadataObj[amt: ',tokenMetadataObj['amt']);\n    myAppConsoleLog.error('DEBUG in insertDebtorDetailsGwys : tokenMetadataObj[currency: ',tokenMetadataObj['currency']);\n    myAppConsoleLog.error('DEBUG in insertDebtorDetailsGwys : tokenMetadataObj[tpp_org_name: ',tokenMetadataObj['tpp_org_name']);\n    myAppConsoleLog.error('DEBUG in insertDebtorDetailsGwys : req_consentid: ',req_consentid);\n    myAppConsoleLog.error('DEBUG in insertDebtorDetailsGwys : req_amt: ',req_amt);\n    myAppConsoleLog.error('DEBUG in insertDebtorDetailsGwys : req_currency: ',req_currency);\n    myAppConsoleLog.error('DEBUG in insertDebtorDetailsGwys : req_tppOrgName: ',req_tppOrgName);\n    \n    if ((tokenMetadataObj['consentid'] !=  req_consentid) || (tokenMetadataObj['amt'] !=  req_amt) || (tokenMetadataObj['currency'] !=  req_currency) || (tokenMetadataObj['tpp_org_name'] !=  req_tppOrgName)) {\n            myAppConsoleLog.error('in ' + fileName + ' : request data not correct');\n\t\t\tcontext.set('custErrMsg','in insertDebtorDetailsGwys : request data not correct');\n\t\t\tcontext.reject('CustomError', 'GWICE400');\n    }\n}\n\n\n\n//var ctx = session.name('myapicgwyctx')\ntry {\n\tcontext.request.body.readAsBuffer(function(error, origrequest) {\n\t  \tif (error) {\n\t   \t\tmyAppConsoleLog.error('in ' + fileName + ' : failed to read request : ' + err);\n\t\t\tcontext.set('custErrMsg','in insertDebtorDetailsGwys : failed to read request : ' + err);\n\t\t\tcontext.reject('CustomError', 'GWICE400');\n\t  \t} else {\n\t   \t\ttry {\n\t    \t\tvar origrequestStr = origrequest.toString('utf8');\n\t    \t\ttry {\n\t     \t\t\tvar origPymtReq = JSON.parse(origrequestStr);\n\t     \t\t\t\n\t     \t\t\tmyAppConsoleLog.error('**DEBUG : type origPymtReq: ', typeof(origPymtReq))\n\t     \t\t\tmyAppConsoleLog.error('**DEBUG :  origPymtReq: ', origPymtReq)\n\t     \t\t\t\n\t     \t\t\tif (origPymtReq.Data.Initiation) {\n\t      \t\t\t\tvar consentid = origPymtReq.Data.ConsentId\n\t      \t\t\t\t\n\t      \t\t\t\tmyAppConsoleLog.error(\"DEBUG submitpymt gwys consentid: \", consentid)\n\t      \t\t\t    \n\t      \t\t\t    let token_metadata = context.get('oauth.verified_access_token.misc_info')\n\t      \t\t\t    \n\t      \t\t\t    myAppConsoleLog.error('**DEBUG : token_metadata: ', token_metadata)\n\t      \t\t\t    myAppConsoleLog.error('**DEBUG : TYPEOF token_metadata: ', typeof(token_metadata))\n\t      \t\t\t    \n\t      \t\t\t    token_metadata = token_metadata.slice(token_metadata.indexOf('a:') + 2)\n\t      \t\t\t    \n\t      \t\t\t    myAppConsoleLog.error('**DEBUG : token_metadata after slice: ', token_metadata)\n\t      \t\t\t    \n\t      \t\t\t    token_metadata = JSON.parse(token_metadata)\n\t      \t\t\t    \n\t      \t\t\t    myAppConsoleLog.error('**DEBUG : TYPEOF token_metadata: ', typeof(token_metadata))\n\t      \t\t\t    \n\t      \t\t\t    verifyInputvsTokenMetadata(token_metadata, origPymtReq['Data']['ConsentId'], origPymtReq['Data']['Initiation']['InstructedAmount']['Amount'], origPymtReq['Data']['Initiation']['InstructedAmount']['Currency'],context.get('client.org.name') )\n\t      \t\t\t    \n\t      \t\t\t    myAppConsoleLog.error('**DEBUG : tokenmeta consentid: ', token_metadata['consentid'])\n\t      \t\t\t    myAppConsoleLog.error('**DEBUG : tokenmeta amt: ', token_metadata['amt'])\n\t      \t\t\t    myAppConsoleLog.error('**DEBUG : tokenmeta currency: ', token_metadata['currency'])\n\t      \t\t\t    myAppConsoleLog.error('**DEBUG : tokenmeta debitorAcc: ', token_metadata['debitorAcc'])\n\t      \t\t\t    \n   \t\t\t\t\t\tlet debitorAccStr = token_metadata['debitorAcc']\n   \t\t\t\t\t\tlet debitorAccArry = debitorAccStr.split(',')\n   \t\t\t\t\t\tlet debitorAccObj = {\n   \t\t\t\t\t\t    \"SchemeName\": debitorAccArry[0],\n                        \t\"Identification\": debitorAccArry[1],\n                        \t\"Name\": debitorAccArry[2],\n                        \t\"SecondaryIdentification\": debitorAccArry[3],\n   \t\t\t\t\t\t}\n   \t\t\t\t\t\torigPymtReq.Data.Initiation.DebitorAccount = debitorAccObj\n   \t\t\t\t\t\t\n   \t\t\t\t\t\tcontext.message.header.set('clientorgname',context.get('client.org.name'))\n                        context.message.header.set('clientappname',context.get('client.app.name')) \n                        context.message.header.set('clientappid',context.get('client.app.id'))\n   \t\t\t\t\t\t\n   \t\t\t\t\t\tmyAppConsoleLog.error('**DEBUG : final origPymtReq: ', JSON.stringify(origPymtReq))\n   \t\t\t\t\t\tmyAppConsoleLog.error('**DEBUG : final headers: ', JSON.stringify(context.get('message.headers')))\n   \t\t\t\t\t\t\n   \t\t\t\t\t\tmyAppConsoleLog.error('**DEBUG : final ace url: ', context.get('ace-retail-single-pymt-online'), '/domestic-payments')\n   \t\t\t\t\t\t\n   \t\t\t\t\t\tcontext.message.header.set('Content-Type','application/json');\n\t\t\t\t    \tcontext.message.body.write(origPymtReq);\n\t\t\t\t\t\n   \t\t\t\t\t\n\n\t\t\t\t\t} else {\n\t\t\t\t\t    myAppConsoleLog.error('in ' + fileName + ' : request is invalid for single payment');\n                        context.set('custErrMsg','in insertDebtorDetailsGwys : request is invalid for single payment');\n\t\t\t            context.reject('CustomError', 'GWICE400');\n\t     \t\t\t}\n\t    \t\t} catch (e) {\n\t    \t\t    myAppConsoleLog.error('in ' + fileName + ' : failed to parse single payment orig request as JSON');\n                    context.set('custErrMsg','in insertDebtorDetailsGwys : failed to parse single payment orig request as JSON');\n\t\t\t        context.reject('CustomError', 'GWIBE500');\n\t\t\t\t}\n\t   \t\t} catch (e) {\n\t   \t\t    myAppConsoleLog.error('in ' + fileName + ' : failed to convert single payment orig request BufferToString: ' + e);\n                context.set('custErrMsg','in insertDebtorDetailsGwys : failed to convert single payment orig request BufferToString: ' + e);\n\t\t\t    context.reject('CustomError', 'GWIBE500');\n\t\t\t}\n\t  \t}\n\t  \t/*\n  \t\t// set context variable for Audit Logging\n  \t\tvar dt = new Date();\n  \t\tvar lastStepTime = ctx.getVariable('CurrTime');\n  \t\tif (typeof lastStepTime != 'undefined') {\n   \t\t\tapim.setvariable('CurrTime', dt.getTime());\n   \t\t\tapim.setvariable('TranDuration', ctx.getVariable('TranDuration') + ', insertDebtorDetailsGwysTime:' + (dt.getTime() - lastStepTime));\n  \t\t}\n  \t\t*/\n \t});\n} catch (e) {\n    myAppConsoleLog.error('in ' + fileName + ' : ' + e);\n    context.set('custErrMsg','in insertDebtorDetailsGwys : ' + e);\n\tcontext.reject('CustomError', 'GWISE500');\n}"
+                - invoke:
+                    version: 2.0.0
+                    title: invoke
+                    timeout: 60
+                    verb: keep
+                    cache-response: protocol
+                    cache-ttl: 900
+                    stop-on-error:
+                      - ConnectionError
+                    target-url: $(ace-retail-single-pymt-online)/domestic-payments
+                    header-control:
+                      type: blacklist
+                      values: []
+                    parameter-control:
+                      type: blacklist
+                      values: []
+            - condition: '($operationPath() = ''/domestic-payments/{DomesticPaymentId}'')'
+              execute:
+                - invoke:
+                    version: 2.0.0
+                    title: invoke
+                    timeout: 60
+                    verb: keep
+                    cache-response: protocol
+                    cache-ttl: 900
+                    stop-on-error:
+                      - ConnectionError
+                    target-url: $(pymtidstatus-url)$(req.path)
+                    header-control:
+                      type: blacklist
+                      values: []
+                    parameter-control:
+                      type: blacklist
+                      values: []
+      - udp-final-json-response:
+          version: 1.0.0
+          title: udp-final-json-response
+      - udp-audit-logging:
+          version: 1.0.0
+          title: udp-audit-logging
+    catch:
+      - default:
+          - udp-error-handler:
+              version: 1.0.0
+              title: udp-error-handler
+          - udp-audit-logging:
+              version: 1.0.0
+              title: udp-audit-logging
+  properties:
+    target-url:
+      value: 'http://example.com/operation-name'
+      description: The URL of the target service
+      encoded: false
+    idbp-consent-mgmt:
+      value: 'http://idbp-consent-mgmt-APPNAMESPACE-APPDOMAIN'
+    ace-funds-confirmation:
+      value: 'http://idbp-consent-mgmt-APPNAMESPACE-APPDOMAIN/ping'
+    ace-retail-single-pymt-online:
+      value: >-
+        http://singlepaymentapi-http-ACENAMESPACE-CP4IDOMAIN
+    pymtidstatus-url:
+      value: 'http://singlepayment-status-recorder-APPNAMESPACE-APPDOMAIN'    
+  application-authentication:
+    certificate: false
+  activity-log:
+    enabled: true
+    error-content: activity
+    success-content: activity
+  categories:
+    - Payment/OpenBanking/Retail
+tags: []
+definitions:
+  CreateConsentRequest:
+    description: ''
+    type: object
+    properties:
+      Data:
+        type: object
+        properties:
+          Initiation:
+            type: object
+            properties:
+              InstructionIdentification:
+                type: string
+              EndToEndIdentification:
+                type: string
+              InstructedAmount:
+                type: object
+                properties:
+                  Amount:
+                    type: string
+                  Currency:
+                    type: string
+              CreditorAccount:
+                type: object
+                properties:
+                  SchemeName:
+                    type: string
+                  Identification:
+                    type: string
+                  Name:
+                    type: string
+                  SecondaryIdentification:
+                    type: string
+              RemittanceInformation:
+                type: object
+                properties:
+                  Reference:
+                    type: string
+                  Unstructured:
+                    type: string
+      Risk:
+        type: object
+        properties:
+          PaymentContextCode:
+            type: string
+          MerchantCategoryCode:
+            type: string
+          MerchantCustomerIdentification:
+            type: string
+          DeliveryAddress:
+            type: object
+            properties:
+              AddressLine:
+                type: array
+                items:
+                  type: string
+              StreetName:
+                type: string
+              BuildingNumber:
+                type: string
+              PostCode:
+                type: string
+              TownName:
+                type: string
+              CountySubDivision:
+                type: array
+                items:
+                  type: string
+              Country:
+                type: string
+    example: >-
+      {"Data":{"Initiation":{"InstructionIdentification":"ACME412","EndToEndIdentification":"FRESCO.21302.GFX.20","InstructedAmount":{"Amount":"165.88","Currency":"GBP"},"CreditorAccount":{"SchemeName":"UK.OBIE.SortCodeAccountNumber","Identification":"08080021325698","Name":"ACME
+      Inc","SecondaryIdentification":"0002"},"RemittanceInformation":{"Reference":"FRESCO-101","Unstructured":"Internal
+      ops code
+      5120101"}}},"Risk":{"PaymentContextCode":"EcommerceGoods","MerchantCategoryCode":"5967","MerchantCustomerIdentification":"053598653254","DeliveryAddress":{"AddressLine":["Flat
+      7","Acacia Lodge"],"StreetName":"Acacia
+      Avenue","BuildingNumber":"27","PostCode":"GU31
+      2ZZ","TownName":"Sparsholt","CountySubDivision":["Wessex"],"Country":"UK"}}}
+  CreateConsentResponse:
+    description: ''
+    type: object
+    properties:
+      Data:
+        type: object
+        properties:
+          ConsentId:
+            type: string
+          Status:
+            type: string
+          CreationDateTime:
+            type: string
+          StatusUpdateDateTime:
+            type: string
+          Initiation:
+            type: object
+            properties:
+              InstructionIdentification:
+                type: string
+              EndToEndIdentification:
+                type: string
+              InstructedAmount:
+                type: object
+                properties:
+                  Amount:
+                    type: string
+                  Currency:
+                    type: string
+              CreditorAccount:
+                type: object
+                properties:
+                  SchemeName:
+                    type: string
+                  Identification:
+                    type: string
+                  Name:
+                    type: string
+                  SecondaryIdentification:
+                    type: string
+              RemittanceInformation:
+                type: object
+                properties:
+                  Reference:
+                    type: string
+                  Unstructured:
+                    type: string
+      Risk:
+        type: object
+        properties:
+          PaymentContextCode:
+            type: string
+          MerchantCategoryCode:
+            type: string
+          MerchantCustomerIdentification:
+            type: string
+          DeliveryAddress:
+            type: object
+            properties:
+              AddressLine:
+                type: array
+                items:
+                  type: string
+              StreetName:
+                type: string
+              BuildingNumber:
+                type: string
+              PostCode:
+                type: string
+              TownName:
+                type: string
+              CountySubDivision:
+                type: array
+                items:
+                  type: string
+              Country:
+                type: string
+      Links:
+        type: object
+        properties:
+          Self:
+            type: string
+      Meta:
+        type: object
+        properties: {}
+    example: >-
+      {"Data":{"ConsentId":"58923","Status":"AwaitingAuthorisation","CreationDateTime":"2017-06-05T15:15:13+00:00","StatusUpdateDateTime":"2017-06-05T15:15:13+00:00","Initiation":{"InstructionIdentification":"ACME412","EndToEndIdentification":"FRESCO.21302.GFX.20","InstructedAmount":{"Amount":"165.88","Currency":"GBP"},"CreditorAccount":{"SchemeName":"UK.OBIE.SortCodeAccountNumber","Identification":"08080021325698","Name":"ACME
+      Inc","SecondaryIdentification":"0002"},"RemittanceInformation":{"Reference":"FRESCO-101","Unstructured":"Internal
+      ops code
+      5120101"}}},"Risk":{"PaymentContextCode":"EcommerceGoods","MerchantCategoryCode":"5967","MerchantCustomerIdentification":"053598653254","DeliveryAddress":{"AddressLine":["Flat
+      7","Acacia Lodge"],"StreetName":"Acacia
+      Avenue","BuildingNumber":"27","PostCode":"GU31
+      2ZZ","TownName":"Sparsholt","CountySubDivision":["Wessex"],"Country":"UK"}},"Links":{"Self":"https://api.alphabank.com/open-banking/v3.1/pisp/domestic-payment-consents/58923"},"Meta":{}}
+  ConfirmFundResponse:
+    description: ''
+    type: object
+    properties:
+      Data:
+        type: object
+        properties:
+          FundsAvailableResult:
+            type: object
+            properties:
+              FundsAvailableDateTime:
+                type: string
+              FundsAvailable:
+                type: boolean
+      Links:
+        type: object
+        properties:
+          Self:
+            type: string
+      Meta:
+        type: object
+        properties: {}
+    example: >-
+      {"Data":{"FundsAvailableResult":{"FundsAvailableDateTime":"2017-06-05T15:15:23+00:00","FundsAvailable":true}},"Links":{"Self":"https://api.alphabank.com/open-banking/v3.1/pisp/domestic-payment-consents/58923/funds-confirmation"},"Meta":{}}
+  CreatePaymentRequest:
+    description: ''
+    type: object
+    properties:
+      Data:
+        type: object
+        properties:
+          ConsentId:
+            type: string
+          Initiation:
+            type: object
+            properties:
+              InstructionIdentification:
+                type: string
+              EndToEndIdentification:
+                type: string
+              InstructedAmount:
+                type: object
+                properties:
+                  Amount:
+                    type: string
+                  Currency:
+                    type: string
+              CreditorAccount:
+                type: object
+                properties:
+                  SchemeName:
+                    type: string
+                  Identification:
+                    type: string
+                  Name:
+                    type: string
+                  SecondaryIdentification:
+                    type: string
+              RemittanceInformation:
+                type: object
+                properties:
+                  Reference:
+                    type: string
+                  Unstructured:
+                    type: string
+      Risk:
+        type: object
+        properties:
+          PaymentContextCode:
+            type: string
+          MerchantCategoryCode:
+            type: string
+          MerchantCustomerIdentification:
+            type: string
+          DeliveryAddress:
+            type: object
+            properties:
+              AddressLine:
+                type: array
+                items:
+                  type: string
+              StreetName:
+                type: string
+              BuildingNumber:
+                type: string
+              PostCode:
+                type: string
+              TownName:
+                type: string
+              CountySubDivision:
+                type: array
+                items:
+                  type: string
+              Country:
+                type: string
+    example: >-
+      {"Data":{"ConsentId":"58923","Initiation":{"InstructionIdentification":"ACME412","EndToEndIdentification":"FRESCO.21302.GFX.20","InstructedAmount":{"Amount":"165.88","Currency":"GBP"},"CreditorAccount":{"SchemeName":"UK.OBIE.SortCodeAccountNumber","Identification":"08080021325698","Name":"ACME
+      Inc","SecondaryIdentification":"0002"},"RemittanceInformation":{"Reference":"FRESCO-101","Unstructured":"Internal
+      ops code
+      5120101"}}},"Risk":{"PaymentContextCode":"EcommerceGoods","MerchantCategoryCode":"5967","MerchantCustomerIdentification":"053598653254","DeliveryAddress":{"AddressLine":["Flat
+      7","Acacia Lodge"],"StreetName":"Acacia
+      Avenue","BuildingNumber":"27","PostCode":"GU31
+      2ZZ","TownName":"Sparsholt","CountySubDivision":["Wessex"],"Country":"UK"}}}
+  CreatePaymentResponse:
+    description: ''
+    type: object
+    properties:
+      Data:
+        type: object
+        properties:
+          DomesticPaymentId:
+            type: string
+          ConsentId:
+            type: string
+          Status:
+            type: string
+          CreationDateTime:
+            type: string
+          StatusUpdateDateTime:
+            type: string
+          Initiation:
+            type: object
+            properties:
+              InstructionIdentification:
+                type: string
+              EndToEndIdentification:
+                type: string
+              InstructedAmount:
+                type: object
+                properties:
+                  Amount:
+                    type: string
+                  Currency:
+                    type: string
+              CreditorAccount:
+                type: object
+                properties:
+                  SchemeName:
+                    type: string
+                  Identification:
+                    type: string
+                  Name:
+                    type: string
+                  SecondaryIdentification:
+                    type: string
+              RemittanceInformation:
+                type: object
+                properties:
+                  Reference:
+                    type: string
+                  Unstructured:
+                    type: string
+      Links:
+        type: object
+        properties:
+          Self:
+            type: string
+      Meta:
+        type: object
+        properties: {}
+    example: >-
+      {"Data":{"DomesticPaymentId":"58923-001","ConsentId":"58923","Status":"AcceptedSettlementInProcess","CreationDateTime":"2017-06-05T15:15:22+00:00","StatusUpdateDateTime":"2017-06-05T15:15:13+00:00","Initiation":{"InstructionIdentification":"ACME412","EndToEndIdentification":"FRESCO.21302.GFX.20","InstructedAmount":{"Amount":"165.88","Currency":"GBP"},"CreditorAccount":{"SchemeName":"UK.OBIE.SortCodeAccountNumber","Identification":"08080021325698","Name":"ACME
+      Inc","SecondaryIdentification":"0002"},"RemittanceInformation":{"Reference":"FRESCO-101","Unstructured":"Internal
+      ops code
+      5120101"}}},"Links":{"Self":"https://api.alphabank.com/open-banking/v3.1/pisp/domestic-payments/58923-001"},"Meta":{}}
+  ConsentStatusResponse:
+    description: ''
+    type: object
+    properties:
+      Data:
+        type: object
+        properties:
+          ConsentId:
+            type: string
+          Status:
+            type: string
+          CreationDateTime:
+            type: string
+          StatusUpdateDateTime:
+            type: string
+          Initiation:
+            type: object
+            properties:
+              InstructionIdentification:
+                type: string
+              EndToEndIdentification:
+                type: string
+              InstructedAmount:
+                type: object
+                properties:
+                  Amount:
+                    type: string
+                  Currency:
+                    type: string
+              CreditorAccount:
+                type: object
+                properties:
+                  SchemeName:
+                    type: string
+                  Identification:
+                    type: string
+                  Name:
+                    type: string
+                  SecondaryIdentification:
+                    type: string
+              RemittanceInformation:
+                type: object
+                properties:
+                  Reference:
+                    type: string
+                  Unstructured:
+                    type: string
+      Risk:
+        type: object
+        properties:
+          PaymentContextCode:
+            type: string
+          MerchantCategoryCode:
+            type: string
+          MerchantCustomerIdentification:
+            type: string
+          DeliveryAddress:
+            type: object
+            properties:
+              AddressLine:
+                type: array
+                items:
+                  type: string
+              StreetName:
+                type: string
+              BuildingNumber:
+                type: string
+              PostCode:
+                type: string
+              TownName:
+                type: string
+              CountySubDivision:
+                type: array
+                items:
+                  type: string
+              Country:
+                type: string
+      Links:
+        type: object
+        properties:
+          Self:
+            type: string
+      Meta:
+        type: object
+        properties: {}
+    example: >-
+      {"Data":{"ConsentId":"58923","Status":"Authorised","CreationDateTime":"2017-06-05T15:15:13+00:00","StatusUpdateDateTime":"2017-06-05T15:15:22+00:00","Initiation":{"InstructionIdentification":"ACME412","EndToEndIdentification":"FRESCO.21302.GFX.20","InstructedAmount":{"Amount":"165.88","Currency":"GBP"},"CreditorAccount":{"SchemeName":"UK.OBIE.SortCodeAccountNumber","Identification":"08080021325698","Name":"ACME
+      Inc","SecondaryIdentification":"0002"},"RemittanceInformation":{"Reference":"FRESCO-101","Unstructured":"Internal
+      ops code
+      5120101"}}},"Risk":{"PaymentContextCode":"EcommerceGoods","MerchantCategoryCode":"5967","MerchantCustomerIdentification":"053598653254","DeliveryAddress":{"AddressLine":["Flat
+      7","Acacia Lodge"],"StreetName":"Acacia
+      Avenue","BuildingNumber":"27","PostCode":"GU31
+      2ZZ","TownName":"Sparsholt","CountySubDivision":["Wessex"],"Country":"UK"}},"Links":{"Self":"https://api.alphabank.com/open-banking/v3.1/pisp/domestic-payment-consents/58923"},"Meta":{}}
+  PaymentStatusResponse:
+    description: ''
+    type: object
+    properties:
+      Data:
+        type: object
+        properties:
+          DomesticPaymentId:
+            type: string
+          ConsentId:
+            type: string
+          Status:
+            type: string
+          CreationDateTime:
+            type: string
+          StatusUpdateDateTime:
+            type: string
+          Initiation:
+            type: object
+            properties:
+              InstructionIdentification:
+                type: string
+              EndToEndIdentification:
+                type: string
+              InstructedAmount:
+                type: object
+                properties:
+                  Amount:
+                    type: string
+                  Currency:
+                    type: string
+              CreditorAccount:
+                type: object
+                properties:
+                  SchemeName:
+                    type: string
+                  Identification:
+                    type: string
+                  Name:
+                    type: string
+                  SecondaryIdentification:
+                    type: string
+              RemittanceInformation:
+                type: object
+                properties:
+                  Reference:
+                    type: string
+                  Unstructured:
+                    type: string
+      Links:
+        type: object
+        properties:
+          Self:
+            type: string
+      Meta:
+        type: object
+        properties: {}
+    example: >-
+      {"Data":{"DomesticPaymentId":"58923-001","ConsentId":"58923","Status":"AcceptedSettlementInProcess","CreationDateTime":"2017-06-05T15:15:22+00:00","StatusUpdateDateTime":"2017-06-05T15:15:22+00:00","Initiation":{"InstructionIdentification":"ACME412","EndToEndIdentification":"FRESCO.21302.GFX.20","InstructedAmount":{"Amount":"165.88","Currency":"GBP"},"CreditorAccount":{"SchemeName":"UK.OBIE.SortCodeAccountNumber","Identification":"08080021325698","Name":"ACME
+      Inc","SecondaryIdentification":"0002"},"RemittanceInformation":{"Reference":"FRESCO-101","Unstructured":"Internal
+      ops code
+      5120101"}}},"Links":{"Self":"https://api.alphabank.com/open-banking/v3.1/pisp/domestic-payments/58923-001"},"Meta":{}}
+paths:
+  '/domestic-payment-consents/{ConsentId}/funds-confirmation':
+    get:
+      responses:
+        '200':
+          description: 200 OK
+          schema:
+            $ref: '#/definitions/ConfirmFundResponse'
+      security:
+        - AppID: []
+          AppSecret: []
+          UserOAuthSecurity:
+            - payment
+      consumes: []
+      produces: []
+    parameters:
+      - name: ConsentId
+        in: path
+        required: true
+        description: ConsentId
+        type: string
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer Token
+        type: string
+      - name: x-fapi-auth-date
+        in: header
+        required: true
+        type: string
+      - name: x-fapi-customer-ip-address
+        in: header
+        required: true
+        type: string
+      - name: x-fapi-interaction-id
+        in: header
+        required: true
+        type: string
+  /domestic-payment-consents:
+    post:
+      responses:
+        '200':
+          description: 200 OK
+          schema:
+            $ref: '#/definitions/CreateConsentResponse'
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          description: Bearer Intent Token
+          type: string
+        - name: x-idempotency-key
+          in: header
+          required: true
+          description: Idempotency Key
+          type: string
+        - name: x-jws-signature
+          in: header
+          required: true
+          description: Request Payload Digital Signature
+          type: string
+        - name: x-fapi-auth-date
+          in: header
+          required: true
+          description: 'Sun, 10 Sep 2017 19:43:31 GMT'
+          type: string
+        - name: x-fapi-customer-ip-address
+          in: header
+          required: true
+          description: End Consumer Device IP address
+          type: string
+        - name: x-fapi-interaction-id
+          in: header
+          required: true
+          description: Unique GUID
+          type: string
+        - name: CreateConsentRequest
+          in: body
+          required: true
+          description: Request Payload
+          schema:
+            $ref: '#/definitions/CreateConsentRequest'
+      security:
+        - AppID: []
+          AppSecret: []
+          TPPOAuthSecurity:
+            - tpp_client_credentials
+      consumes: []
+      produces: []
+  /domestic-payments:
+    post:
+      responses:
+        '200':
+          description: 200 OK
+          schema:
+            $ref: '#/definitions/CreatePaymentResponse'
+      security:
+        - AppID: []
+          AppSecret: []
+          UserOAuthSecurity:
+            - payment
+      parameters:
+        - name: Authorization
+          type: string
+          required: true
+          in: header
+          description: Bearer Intent Token
+        - name: x-idempotency-key
+          type: string
+          required: true
+          in: header
+          description: Idempotency Key
+        - name: x-jws-signature
+          type: string
+          required: true
+          in: header
+          description: Request Payload Digital Signature
+        - name: x-fapi-auth-date
+          type: string
+          required: true
+          in: header
+          description: 'Sun, 10 Sep 2017 19:43:31 GMT'
+        - name: x-fapi-customer-ip-address
+          type: string
+          required: true
+          in: header
+          description: End Consumer Device IP address
+        - name: x-fapi-interaction-id
+          type: string
+          required: true
+          in: header
+          description: Unique GUID
+        - name: CreatePaymentRequest
+          required: true
+          in: body
+          schema:
+            $ref: '#/definitions/CreatePaymentRequest'
+          description: Request Payload
+  '/domestic-payment-consents/{ConsentId}':
+    get:
+      responses:
+        '200':
+          description: 200 OK
+          schema:
+            $ref: '#/definitions/ConsentStatusResponse'
+      security:
+        - AppID: []
+          AppSecret: []
+          UserOAuthSecurity:
+            - payment
+    parameters:
+      - name: ConsentId
+        type: string
+        required: true
+        in: path
+        description: ConsentId
+      - name: Authorization
+        type: string
+        required: false
+        in: header
+        description: Bearer Token
+      - name: x-fapi-auth-date
+        type: string
+        required: false
+        in: header
+      - name: x-fapi-customer-ip-address
+        type: string
+        required: false
+        in: header
+      - name: x-fapi-interaction-id
+        type: string
+        required: false
+        in: header
+  '/domestic-payments/{DomesticPaymentId}':
+    get:
+      responses:
+        '200':
+          description: 200 OK
+          schema:
+            $ref: '#/definitions/PaymentStatusResponse'
+      security:
+        - AppID: []
+          AppSecret: []
+          UserOAuthSecurity:
+            - payment
+    parameters:
+      - name: DomesticPaymentId
+        type: string
+        required: true
+        in: path
+        description: ConsentId
+      - name: Authorization
+        type: string
+        required: false
+        in: header
+        description: Bearer Token
+      - name: x-fapi-auth-date
+        type: string
+        required: false
+        in: header
+      - name: x-fapi-customer-ip-address
+        type: string
+        required: false
+        in: header
+      - name: x-fapi-interaction-id
+        type: string
+        required: false
+        in: header

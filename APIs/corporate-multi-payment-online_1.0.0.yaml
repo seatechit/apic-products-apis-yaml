@@ -1,0 +1,248 @@
+swagger: '2.0'
+info:
+  title: Corporate Multi Payment Online
+  x-ibm-name: corporate-multi-payment-online
+  version: 1.0.0
+  description: >-
+    Array of domestic single payment and each payment module follows the swagger
+    for openbanking PISP Domestic Payments V3.1 API Specifications
+host: $(catalog.host)
+schemes:
+  - https
+basePath: /OB-v312/IDBP-v1
+produces:
+  - application/json
+consumes:
+  - application/json
+security:
+  - AppID: []
+    AppSecret: []
+securityDefinitions:
+  AppSecret:
+    type: apiKey
+    description: ''
+    name: X-Client-Secret
+    in: header
+    x-key-type: client_secret
+  AppID:
+    type: apiKey
+    name: X-Client-Id
+    in: header
+    x-key-type: client_id
+x-ibm-configuration:
+  testable: true
+  enforced: true
+  cors:
+    enabled: true
+  assembly:
+    execute:
+      - udp-init-n-hdr-ctype-validate:
+          version: 1.0.0
+          title: udp-init-n-hdr-ctype-validate
+      - udp-jwt-with-signature-verify:
+          version: 1.0.0
+          title: udp-jwt-with-signature-verify
+      - invoke:
+          version: 2.0.0
+          title: invoke
+          header-control:
+            type: blacklist
+            values: []
+          parameter-control:
+            type: whitelist
+            values: []
+          timeout: 60
+          verb: keep
+          cache-response: protocol
+          cache-ttl: 900
+          stop-on-error:
+            - ConnectionError
+          target-url: $(ace-corp-multi-pymt-online)
+      - udp-final-json-response:
+          version: 1.0.0
+          title: udp-final-json-response
+      - udp-audit-logging:
+          version: 1.0.0
+          title: udp-audit-logging
+    catch:
+      - default:
+          - udp-error-handler:
+              version: 1.0.0
+              title: udp-error-handler
+          - udp-audit-logging:
+              version: 1.0.0
+              title: udp-audit-logging
+  phase: realized
+  catalogs:
+    apic-dev: {}
+    sandbox-v5c:
+      properties: {}
+  gateway: datapower-api-gateway
+  type: rest
+  properties:
+    ace-corp-multi-pymt-online:
+      value: 'http://multipaymentapi-http-ACENAMESPACE-CP4IDOMAIN/corporate-payments'
+  application-authentication:
+    certificate: false
+  activity-log:
+    enabled: true
+    error-content: header
+    success-content: activity
+  categories:
+    - Payment/OpenBanking/Corporate
+tags: []
+definitions:
+  CorpMultiPaymentOnlineReq:
+    description: ''
+    type: object
+    properties:
+      MultiPaymentCorpReq:
+        type: object
+        properties:
+          Header:
+            type: object
+            properties:
+              TranID:
+                type: string
+              Corp_ID:
+                type: string
+              Maker_ID:
+                type: string
+              Checker_ID:
+                type: string
+              Approver_ID:
+                type: string
+          Body:
+            type: object
+            properties:
+              Payment:
+                type: array
+                items:
+                  properties:
+                    Data:
+                      type: object
+                      properties:
+                        ConsentId:
+                          type: string
+                        Initiation:
+                          type: object
+                          properties:
+                            InstructionIdentification:
+                              type: string
+                            EndToEndIdentification:
+                              type: string
+                            InstructedAmount:
+                              type: object
+                              properties:
+                                Amount:
+                                  type: string
+                                Currency:
+                                  type: string
+                            CreditorAccount:
+                              type: object
+                              properties:
+                                SchemeName:
+                                  type: string
+                                Identification:
+                                  type: string
+                                Name:
+                                  type: string
+                                SecondaryIdentification:
+                                  type: string
+                            RemittanceInformation:
+                              type: object
+                              properties:
+                                Reference:
+                                  type: string
+                                Unstructured:
+                                  type: string
+                    Risk:
+                      type: object
+                      properties:
+                        PaymentContextCode:
+                          type: string
+                        MerchantCategoryCode:
+                          type: string
+                        MerchantCustomerIdentification:
+                          type: string
+                        DeliveryAddress:
+                          type: object
+                          properties:
+                            AddressLine:
+                              type: array
+                              items:
+                                type: string
+                            StreetName:
+                              type: string
+                            BuildingNumber:
+                              type: string
+                            PostCode:
+                              type: string
+                            TownName:
+                              type: string
+                            CountySubDivision:
+                              type: array
+                              items:
+                                type: string
+                            Country:
+                              type: string
+                  type: object
+    example: >-
+      {"MultiPaymentCorpReq":{"Header":{"TranID":"AK111","Corp_ID":"TEST2222","Maker_ID":"M001","Checker_ID":"C001","Approver_ID":"A002"},"Body":{"Payment":[{"Data":{"ConsentId":"58923","Initiation":{"InstructionIdentification":"ACME412","EndToEndIdentification":"FRESCO.21302.GFX.20","InstructedAmount":{"Amount":"165.88","Currency":"GBP"},"CreditorAccount":{"SchemeName":"UK.OBIE.SortCodeAccountNumber","Identification":"9876543210","Name":"Phonepe","SecondaryIdentification":"0002"},"RemittanceInformation":{"Reference":"FRESCO-101","Unstructured":"Internal
+      ops code
+      5120101"}}},"Risk":{"PaymentContextCode":"EcommerceGoods","MerchantCategoryCode":"5967","MerchantCustomerIdentification":"053598653254","DeliveryAddress":{"AddressLine":["Flat
+      7","Acacia Lodge"],"StreetName":"Acacia
+      Avenue","BuildingNumber":"27","PostCode":"GU31
+      2ZZ","TownName":"Sparsholt","CountySubDivision":["Wessex"],"Country":"UK"}}},{"Data":{"ConsentId":"58924","Initiation":{"InstructionIdentification":"ACME412","EndToEndIdentification":"FRESCO.21302.GFX.20","InstructedAmount":{"Amount":"170.50","Currency":"GBP"},"CreditorAccount":{"SchemeName":"UK.OBIE.SortCodeAccountNumber","Identification":"9876543211","Name":"Phonepe","SecondaryIdentification":"0002"},"RemittanceInformation":{"Reference":"FRESCO-101","Unstructured":"Internal
+      ops code
+      5120101"}}},"Risk":{"PaymentContextCode":"EcommerceGoods","MerchantCategoryCode":"5967","MerchantCustomerIdentification":"053598653254","DeliveryAddress":{"AddressLine":["Flat
+      7","Acacia Lodge"],"StreetName":"Acacia
+      Avenue","BuildingNumber":"27","PostCode":"GU31
+      2ZZ","TownName":"Sparsholt","CountySubDivision":["Wessex"],"Country":"UK"}}}]}}}
+  CorpMultiPaymentOnlineRes:
+    properties:
+      CorpMultiPaymentOnlineRes:
+        type: object
+    additionalProperties: false
+  CorpMultiPaymentOnlineErr:
+    properties:
+      CorpMultiPaymentOnlineErr:
+        type: object
+    additionalProperties: false
+paths:
+  /corporate-multi-payment-online:
+    post:
+      responses:
+        '200':
+          description: 200 OK
+          schema:
+            $ref: '#/definitions/CorpMultiPaymentOnlineRes'
+        '201':
+          description: 201 Created
+          schema:
+            $ref: '#/definitions/CorpMultiPaymentOnlineRes'
+        '400':
+          description: 400 Bad Request
+        '401':
+          description: 401 Unauthorized
+        '403':
+          description: 403 Forbidden
+        '405':
+          description: 405 Method Not Allowed
+        '406':
+          description: 406 Not Acceptable
+        '415':
+          description: 415 Unsupported Media Type
+        '429':
+          description: 429 Too Many Requests
+        '500':
+          description: 500 Internal Server Error
+      parameters:
+        - name: Request Payload
+          required: true
+          in: body
+          schema:
+            $ref: '#/definitions/CorpMultiPaymentOnlineReq'
+          description: JSON request payload
+      operationId: createCorporateMultiPaymentOnline
+      summary: Create Corporate Multi Payment Online

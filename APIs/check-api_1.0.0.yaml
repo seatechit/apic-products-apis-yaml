@@ -1,0 +1,53 @@
+swagger: '2.0'
+info:
+  title: Check Api
+  x-ibm-name: check-api
+  version: 1.0.0
+schemes:
+  - https
+basePath: /check-api
+security:
+  - clientID: []
+securityDefinitions:
+  clientID:
+    type: apiKey
+    name: X-Client-Id
+    in: header
+    x-key-type: client_id
+x-ibm-configuration:
+  cors:
+    enabled: false
+  gateway: datapower-api-gateway
+  type: rest
+  phase: realized
+  enforced: true
+  testable: true
+  assembly:
+    execute:
+      - gatewayscript:
+          version: 2.0.0
+          title: gatewayscript
+          source: |
+            const response = {
+                "Name" : context.get('api.name') , 
+                "Version" : context.get('api.version'),
+                "BackendURL": context.get('target-url')
+            };
+            context.message.body.write(response)
+            context.message.header.set('content-type','application/json')
+  properties:
+    target-url:
+      value: 'http://example.com/operation-name'
+      description: The URL of the target service
+      encoded: false
+  application-authentication:
+    certificate: false
+  catalogs:
+    sandbox:
+      properties:
+        target-url: 'https://check-mybackend-sandbox'
+    uat:
+      properties:
+        target-url: 'https://check-mybackend-uat'
+paths:
+  /stub: {}

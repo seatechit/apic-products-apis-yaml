@@ -1,0 +1,31 @@
+info:
+  title: Pilot Product
+  name: pilot-product
+  version: 1.0.0
+apis:
+  pilot-api1.0.0:
+    name: 'pilot-api:1.0.0'
+  check-api1.0.0:
+    name: 'check-api:1.0.0'
+plans:
+  default-plan:
+    title: Default Plan
+    description: Default Plan
+    approval: false
+    rate-limits:
+      default:
+        value: 100/1hour
+gateways:
+  - datapower-api-gateway
+product: 1.0.0
+visibility:
+  view:
+    enabled: true
+    type: public
+    tags: []
+    orgs: []
+  subscribe:
+    enabled: true
+    type: authenticated
+    tags: []
+    orgs: []

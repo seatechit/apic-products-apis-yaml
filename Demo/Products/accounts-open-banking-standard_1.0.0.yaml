@@ -1,0 +1,37 @@
+info:
+  name: accounts-open-banking-standard
+  title: Accounts (Open Banking Standard)
+  version: 1.0.0
+  categories:
+    - Account/OpenBanking
+apis:
+  account-consent-open-banking-standard1.0.0:
+    name: account-consent-open-banking-standard:1.0.0
+  retrieve-account-details-open-banking-standard1.0.0:
+    name: retrieve-account-details-open-banking-standard:1.0.0
+  retrieve-balance-details-open-banking-standard1.0.0:
+    name: retrieve-balance-details-open-banking-standard:1.0.0
+  retrieve-transaction-details-open-banking-standard1.0.0:
+    name: retrieve-transaction-details-open-banking-standard:1.0.0
+gateways:
+  - datapower-api-gateway
+plans:
+  default-plan:
+    title: Default Plan
+    description: Default Plan
+    approval: false
+    rate-limits:
+      default:
+        value: 100/1hour
+product: 1.0.0
+visibility:
+  view:
+    enabled: true
+    type: public
+    tags: []
+    orgs: []
+  subscribe:
+    enabled: true
+    type: authenticated
+    tags: []
+    orgs: []

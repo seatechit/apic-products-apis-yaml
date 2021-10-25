@@ -1,0 +1,29 @@
+info:
+  version: 1.0.0
+  title: Retail Single Payment (Open Banking Standard)
+  name: retail-single-payment-open-banking-standard
+  categories:
+    - Payment/OpenBanking/Retail
+gateways:
+  - datapower-api-gateway
+plans:
+  basic-plan:
+    rate-limits:
+      default:
+        value: 100/1hour
+    title: Basic Plan
+    description: Basic Plan
+    approval: false
+apis:
+  retail-single-payment-open-banking1.0.0:
+    name: retail-single-payment-open-banking:1.0.0
+visibility:
+  view:
+    type: public
+    orgs: []
+    enabled: true
+  subscribe:
+    type: authenticated
+    orgs: []
+    enabled: true
+product: 1.0.0
