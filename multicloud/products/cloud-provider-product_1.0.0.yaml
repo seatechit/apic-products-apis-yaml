@@ -1,0 +1,30 @@
+product: 1.0.0
+info:
+  title: Cloud Provider
+  name: cloud-provider
+  version: 1.0.0
+gateways:
+- datapower-api-gateway
+apis:
+  cloud-provider1.0.0:
+    name: cloud-provider:1.0.0
+plans:
+  default:
+    title: Default Plan
+    description: Default Plan
+    approval: false
+    rate-limit:
+      value: unlimited
+    apis:
+      cloud-provider1.0.0: {}
+visibility:
+  view:
+    enabled: true
+    type: public
+    tags: []
+    orgs: []
+  subscribe:
+    enabled: true
+    type: authenticated
+    tags: []
+    orgs: []
