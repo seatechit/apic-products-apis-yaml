@@ -14,6 +14,13 @@ security:
   - AppID: []
     AppSecret: []
 securityDefinitions:
+  TPPOAuthSecurity:
+    type: oauth2
+    flow: application
+    x-ibm-oauth-provider: idbp-intent-oauth-provider
+    tokenUrl: 'https://$(catalog.url)/idbp/intent/oauth/provider/oauth2/token'
+    scopes:
+      tpp_client_credentials: for intent token
   AppSecret:
     type: apiKey
     name: X-Client-Secret
