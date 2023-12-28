@@ -14,6 +14,14 @@ security:
   - AppID: []
     AppSecret: []
 securityDefinitions:
+  UserOAuthSecurity:
+    type: oauth2
+    flow: accessCode
+    x-ibm-oauth-provider: idbp-accounts-oauth-provider
+    authorizationUrl: 'https://$(catalog.url)/idbp/account/oauthprov/oauth2/authorize'
+    tokenUrl: 'https://$(catalog.url)/idbp/account/oauthprov/oauth2/token'
+    scopes:
+      account: For Accounts Read APIs
   AppSecret:
     type: apiKey
     name: X-Client-Secret
