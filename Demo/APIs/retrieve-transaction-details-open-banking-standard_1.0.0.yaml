@@ -197,7 +197,7 @@ paths:
       security:
         # - UserOAuthSecurity:
         #     - account
-          AppSecret: []
+        - AppSecret: []
           AppID: []
       operationId: retrieveAccountsForCIF
   '/accounts/{accountid}/transactions':
@@ -212,7 +212,7 @@ paths:
       security:
         # - UserOAuthSecurity:
         #     - account
-          AppSecret: []
+        - AppSecret: []
           AppID: []
       operationId: retrieveAccountForAccId
     parameters:

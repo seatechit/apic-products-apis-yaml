@@ -185,7 +185,7 @@ paths:
       security:
         # - UserOAuthSecurity:
         #     - account
-          AppSecret: []
+        - AppSecret: []
           AppID: []
       operationId: retrieveAccountsForCIF
   '/accounts/{accountid}/balances':
@@ -200,7 +200,7 @@ paths:
       security:
         # - UserOAuthSecurity:
         #     - account
-          AppSecret: []
+        - AppSecret: []
           AppID: []
       operationId: retrieveAccountForAccId
     parameters:
