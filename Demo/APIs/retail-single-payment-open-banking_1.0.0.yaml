@@ -26,6 +26,21 @@ securityDefinitions:
     name: x-client-secret
     in: header
     x-key-type: client_secret
+  TPPOAuthSecurity:
+    type: oauth2
+    flow: application
+    x-ibm-oauth-provider: idbp-intent-oauth-provider
+    tokenUrl: 'https://$(catalog.url)/idbp/intent/oauth/provider/oauth2/token'
+    scopes:
+      tpp_client_credentials: for intent token
+  UserOAuthSecurity:
+    type: oauth2
+    flow: accessCode
+    x-ibm-oauth-provider: idbp-payment-oauth-provider
+    authorizationUrl: 'https://$(catalog.url)/idbp/payment/oauth/provider/oauth2/authorize'
+    tokenUrl: 'https://$(catalog.url)/idbp/payment/oauth/provider/oauth2/token'
+    scopes:
+      payment: For Payment API
 x-ibm-configuration:
   enforced: true
   testable: true
